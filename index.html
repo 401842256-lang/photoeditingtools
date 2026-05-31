@@ -1,0 +1,2881 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>朋友圈中心封面长图生成器</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --panel: #ffffff;
+        --text: #172033;
+        --muted: #647084;
+        --line: #dce2ec;
+        --blue: #2563eb;
+        --blue-soft: #e8f0ff;
+        --green: #17a673;
+        --yellow: #d58b00;
+        --red: #d63d3d;
+        --shadow: 0 12px 34px rgba(23, 32, 51, 0.1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .topbar {
+        height: 64px;
+        background: rgba(255, 255, 255, 0.92);
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        backdrop-filter: blur(14px);
+      }
+
+      .brand {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .brand strong {
+        font-size: 18px;
+      }
+
+      .brand span,
+      .hint {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .actions,
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .btn {
+        min-height: 38px;
+        padding: 0 14px;
+        border-radius: 8px;
+        background: #eef2f7;
+        color: var(--text);
+        font-weight: 650;
+      }
+
+      .btn:hover {
+        background: #e4eaf4;
+      }
+
+      .btn.primary {
+        background: var(--blue);
+        color: white;
+      }
+
+      .btn.primary:hover {
+        background: #1d55d4;
+      }
+
+      .btn.danger {
+        background: #ffecec;
+        color: var(--red);
+      }
+
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .main {
+        display: grid;
+        grid-template-columns: 250px minmax(0, 1fr);
+        min-height: 0;
+      }
+
+      .sidebar {
+        border-right: 1px solid var(--line);
+        background: var(--panel);
+        padding: 16px;
+        overflow: auto;
+      }
+
+      .sidebar h2,
+      .panel h2 {
+        margin: 0 0 12px;
+        font-size: 16px;
+      }
+
+      .steps {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      .step {
+        border: 0;
+        text-align: left;
+        background: transparent;
+        width: 100%;
+        padding: 11px 12px;
+        border-radius: 8px;
+        color: var(--muted);
+        font-weight: 650;
+      }
+
+      .step.active {
+        background: var(--blue-soft);
+        color: var(--blue);
+      }
+
+      .step.available {
+        cursor: pointer;
+      }
+
+      .step.available:hover {
+        background: #eef2f7;
+        color: var(--text);
+      }
+
+      .step.locked {
+        cursor: not-allowed;
+        opacity: 0.48;
+      }
+
+      .sidebar-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        margin-top: 12px;
+      }
+
+      .workspace {
+        padding: 20px;
+        overflow: auto;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 4px 14px rgba(23, 32, 51, 0.04);
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+        gap: 18px;
+      }
+
+      .upload-zone {
+        border: 2px dashed #aab6c8;
+        border-radius: 12px;
+        min-height: 230px;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        padding: 24px;
+        background: #fbfcff;
+      }
+
+      .upload-zone.drag {
+        border-color: var(--blue);
+        background: var(--blue-soft);
+      }
+
+      .progress-wrap {
+        margin-top: 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px;
+        background: #fbfcff;
+      }
+
+      .progress-track {
+        height: 10px;
+        border-radius: 999px;
+        background: #e8edf5;
+        overflow: hidden;
+        margin-top: 8px;
+      }
+
+      .progress-bar {
+        height: 100%;
+        width: 0%;
+        background: var(--blue);
+        transition: width 0.18s ease;
+      }
+
+      .file-input {
+        display: none;
+      }
+
+      .thumb-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .thumb,
+      .cover-choice,
+      .strip-card,
+      .pool-thumb {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #eef2f7;
+      }
+
+      .thumb {
+        aspect-ratio: 1;
+      }
+
+      .thumb img,
+      .cover-choice img,
+      .pool-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .remove {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: rgba(23, 32, 51, 0.78);
+        color: white;
+      }
+
+      .layout-options,
+      .density-options {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(90px, 1fr));
+        gap: 12px;
+      }
+
+      .option {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: white;
+        padding: 12px;
+        text-align: left;
+      }
+
+      .option.active {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px var(--blue-soft);
+      }
+
+      .mini-layout {
+        display: grid;
+        gap: 3px;
+        width: 72px;
+        height: 46px;
+        margin-bottom: 10px;
+      }
+
+      .mini-layout span {
+        background: #d6e3ff;
+        border-radius: 3px;
+      }
+
+      .cover-picker {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+        max-height: 520px;
+        overflow: auto;
+        padding-right: 4px;
+      }
+
+      .cover-choice {
+        aspect-ratio: 1;
+      }
+
+      .cover-choice.active {
+        outline: 4px solid var(--blue);
+      }
+
+      .feed-preview {
+        width: min(520px, 100%);
+        margin: 0 auto;
+        display: grid;
+        gap: 5px;
+        background: #e7edf6;
+        padding: 5px;
+        border-radius: 10px;
+      }
+
+      .feed-preview.wide {
+        width: min(620px, 100%);
+      }
+
+      .preview-note {
+        color: var(--muted);
+        font-size: 13px;
+        margin: 10px 0 0;
+        text-align: center;
+      }
+
+      .feed-cell {
+        aspect-ratio: 1;
+        background: #d8dee9;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .feed-cell canvas,
+      .feed-cell img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .cover-workspace {
+        display: grid;
+        grid-template-columns: 260px minmax(380px, 1fr) 320px;
+        gap: 18px;
+      }
+
+      .cover-stage {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #f8fafc;
+        padding: 14px;
+      }
+
+      .cover-cropper {
+        width: 100%;
+        aspect-ratio: var(--cover-ratio, 1);
+        position: relative;
+        overflow: hidden;
+        border-radius: 10px;
+        background: #dde5f0;
+        cursor: grab;
+        user-select: none;
+      }
+
+      .cover-cropper:active {
+        cursor: grabbing;
+      }
+
+      .cover-cropper img {
+        position: absolute;
+        max-width: none;
+        transform-origin: center center;
+        user-select: none;
+        pointer-events: none;
+      }
+
+      .grid-lines {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        pointer-events: none;
+      }
+
+      .grid-lines span {
+        border: 1px solid rgba(255, 255, 255, 0.82);
+        box-shadow: inset 0 0 0 1px rgba(23, 32, 51, 0.12);
+      }
+
+      .crop-controls {
+        display: grid;
+        grid-template-columns: auto 1fr auto auto;
+        gap: 10px;
+        align-items: center;
+        margin-top: 12px;
+      }
+
+      .range {
+        width: 100%;
+      }
+
+      .editor-shell {
+        display: grid;
+        grid-template-columns: 168px minmax(360px, 1fr) 220px;
+        gap: 16px;
+      }
+
+      .strip {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+      }
+
+      .strip-card {
+        min-height: 138px;
+        padding: 8px;
+        cursor: pointer;
+      }
+
+      .strip-card.active {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px var(--blue-soft);
+      }
+
+      .strip-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+
+      .dot.warn {
+        background: var(--yellow);
+      }
+
+      .strip-mini {
+        aspect-ratio: 1;
+        width: 74px;
+        margin: 0 auto 6px;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #dbe4f2;
+      }
+
+      .strip-mini img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .canvas-area {
+        min-width: 0;
+      }
+
+      .status-banner {
+        border: 1px solid #f4c766;
+        background: #fff8e7;
+        color: #765000;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .long-canvas {
+        width: 520px;
+        margin: 0 auto;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: var(--shadow);
+        transform-origin: top center;
+      }
+
+      .canvas-zoom-host {
+        display: grid;
+        justify-content: center;
+        overflow: auto;
+        min-height: 240px;
+        padding-bottom: 12px;
+      }
+
+      .long-preview-panel {
+        position: sticky;
+        top: 84px;
+        align-self: start;
+      }
+
+      .full-preview {
+        width: 100%;
+        max-height: none;
+        overflow: visible;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 8px;
+      }
+
+      .preview-image-wrap {
+        position: relative;
+        display: block;
+        margin: 0 auto;
+      }
+
+      .preview-image-wrap img {
+        width: 100%;
+        display: block;
+      }
+
+      .center-crop-guide {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        aspect-ratio: 1;
+        border: 3px dashed #e11d48;
+        box-shadow: 0 0 0 9999px rgba(225, 29, 72, 0.04);
+        pointer-events: none;
+      }
+
+      .preview-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 10px 0;
+        align-items: center;
+      }
+
+      .zoom-slider {
+        flex: 1;
+        min-width: 130px;
+      }
+
+      .zoom-value {
+        min-width: 48px;
+        text-align: right;
+        color: var(--muted);
+        font-weight: 750;
+        font-size: 13px;
+      }
+
+      .section-label {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 750;
+        margin: 8px 0;
+      }
+
+      .balance-spacer {
+        border: 1px dashed var(--line);
+        border-radius: 6px;
+        background: #fff8e7;
+        color: var(--muted);
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        margin-bottom: 8px;
+        padding: 10px;
+        text-align: center;
+        gap: 8px;
+      }
+
+      .balance-spacer strong {
+        color: #765000;
+      }
+
+      .balance-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .small-btn {
+        min-height: 30px;
+        padding: 0 10px;
+        border-radius: 7px;
+        background: white;
+        color: var(--text);
+        border: 1px solid var(--line);
+        font-weight: 700;
+        font-size: 12px;
+      }
+
+      .guide-bubble {
+        border: 1px solid #9bb9ff;
+        background: var(--blue-soft);
+        color: #1d3f8f;
+        border-radius: 9px;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        margin: 8px 0;
+      }
+
+      .photo-block {
+        position: relative;
+        border-radius: 6px;
+        overflow: hidden;
+        border: 2px solid #cfd8e6;
+        background: #f8fafc;
+        margin-bottom: 8px;
+        cursor: grab;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+
+      .photo-block::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border: 1px solid rgba(37, 99, 235, 0.22);
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .photo-viewport {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+        background: #e8edf5;
+        touch-action: none;
+      }
+
+      .photo-viewport img {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        max-width: none;
+        user-select: none;
+        -webkit-user-drag: none;
+        -webkit-touch-callout: none;
+        pointer-events: none;
+      }
+
+      .cover-block img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .photo-block.selected {
+        outline: 4px solid var(--blue);
+      }
+
+      .block-tools {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        display: flex;
+        gap: 6px;
+      }
+
+      .tool {
+        height: 28px;
+        border-radius: 6px;
+        padding: 0 9px;
+        background: rgba(255, 255, 255, 0.92);
+        color: var(--text);
+        font-weight: 700;
+        font-size: 12px;
+      }
+
+      .long-canvas.zoomed .section-label,
+      .long-canvas.zoomed .tool,
+      .long-canvas.zoomed .drag,
+      .long-canvas.zoomed .cover-lock,
+      .long-canvas.zoomed .balance-spacer {
+        font-size: 10px;
+      }
+
+      .long-canvas.zoomed .block-tools {
+        transform: scale(0.85);
+        transform-origin: top right;
+      }
+
+      .drag {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        height: 36px;
+        min-width: 88px;
+        display: grid;
+        place-items: center;
+        border-radius: 6px;
+        background: rgba(37, 99, 235, 0.94);
+        font-weight: 800;
+        color: white;
+        font-size: 12px;
+        cursor: grab;
+      }
+
+      .drag::before {
+        content: "☰ ";
+        font-size: 13px;
+      }
+
+      .crop-popover {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 8px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 8px 22px rgba(23, 32, 51, 0.16);
+      }
+
+      .cover-block {
+        aspect-ratio: 1;
+        border: 3px solid var(--blue);
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+        background: var(--blue-soft);
+        margin: 12px 0;
+      }
+
+      .cover-block img {
+        position: absolute;
+        inset: 0;
+      }
+
+      .cover-lock {
+        position: absolute;
+        inset: auto 10px 10px 10px;
+        background: rgba(37, 99, 235, 0.92);
+        color: white;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 13px;
+        font-weight: 750;
+        text-align: center;
+      }
+
+      .pool {
+        margin-top: 16px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+      }
+
+      .pool-row {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 108px;
+        gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+      }
+
+      .pool-thumb {
+        height: 122px;
+        cursor: grab;
+        display: grid;
+        grid-template-rows: 82px 1fr;
+      }
+
+      .pool-thumb img {
+        height: 82px;
+      }
+
+      .pool-meta {
+        padding: 5px 6px;
+        font-size: 11px;
+        color: var(--muted);
+        background: white;
+        display: grid;
+        gap: 2px;
+      }
+
+      .pool-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .tab-btn {
+        min-height: 32px;
+        padding: 0 12px;
+        border-radius: 999px;
+        background: #eef2f7;
+        color: var(--muted);
+        font-weight: 750;
+      }
+
+      .tab-btn.active {
+        color: var(--blue);
+        background: var(--blue-soft);
+      }
+
+      .add-tile {
+        height: 122px;
+        border: 1px dashed #aab6c8;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-weight: 750;
+      }
+
+      .drawer {
+        position: fixed;
+        right: 22px;
+        top: 86px;
+        width: 230px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 14px;
+        z-index: 30;
+      }
+
+      .editor-zoom {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 10px 0 14px;
+      }
+
+      .ratio-select {
+        width: 100%;
+        min-height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 0 8px;
+        background: white;
+        margin-top: 8px;
+      }
+
+      .frame-choices {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+
+      .frame-choice {
+        min-height: 30px;
+        border-radius: 7px;
+        background: #eef2f7;
+        color: var(--muted);
+        font-weight: 750;
+        font-size: 12px;
+      }
+
+      .frame-choice.active {
+        background: var(--blue);
+        color: white;
+      }
+
+      .drawer h3 {
+        margin: 0 0 10px;
+        font-size: 15px;
+      }
+
+      .drawer .btn {
+        width: 100%;
+        margin-top: 8px;
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(23, 32, 51, 0.55);
+        z-index: 40;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .modal.show {
+        display: flex;
+      }
+
+      .modal-card {
+        width: min(760px, 100%);
+        max-height: 90vh;
+        overflow: auto;
+        background: white;
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: var(--shadow);
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .drop-target {
+        outline: 3px dashed var(--blue);
+        outline-offset: 3px;
+      }
+
+      @media (max-width: 980px) {
+        .main {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          display: none;
+        }
+
+        .grid-2,
+        .editor-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .strip {
+          grid-template-columns: repeat(3, 1fr);
+        }
+
+        .topbar {
+          height: auto;
+          gap: 12px;
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <strong>朋友圈中心封面长图生成器</strong>
+          <span id="projectStatus">上传照片，开始制作一组可发布的长图</span>
+        </div>
+        <div class="actions">
+          <button class="btn hidden" id="backStepBtn">返回上一步</button>
+          <button class="btn" id="previewBtn" disabled>查看朋友圈预览</button>
+          <button class="btn" id="autoFixBtn" disabled>自动补齐</button>
+          <button class="btn primary" id="exportBtn" disabled>导出全部</button>
+        </div>
+      </header>
+
+      <main class="main">
+        <aside class="sidebar">
+          <h2>制作步骤</h2>
+          <div class="steps">
+            <button class="step active" data-step-indicator="upload" data-step-jump="upload">1. 上传照片</button>
+            <button class="step" data-step-indicator="settings" data-step-jump="settings">2. 发布设置</button>
+            <button class="step" data-step-indicator="cover" data-step-jump="cover">3. 选择封面</button>
+            <button class="step" data-step-indicator="editor" data-step-jump="editor">4. 单画布调整</button>
+          </div>
+          <div class="sidebar-card">
+            <strong>本地暂存</strong>
+            <p class="hint">图片仅保存在当前设备浏览器中，不会上传云端。清理浏览器缓存后记录可能消失。</p>
+            <button class="btn danger" id="clearProjectBtn">清除本地记录</button>
+          </div>
+        </aside>
+
+        <section class="workspace">
+          <section class="panel" id="uploadStep">
+            <div class="grid-2">
+              <div>
+                <h2>上传内容照片</h2>
+                <p class="hint">支持 1-100 张 JPG、PNG、WEBP。MVP 版本会在浏览器本地处理和暂存。</p>
+                <label class="upload-zone" id="uploadZone">
+                  <input class="file-input" id="photoInput" type="file" accept="image/*" multiple />
+                  <span>
+                    <strong>点击或拖拽上传照片</strong><br />
+                    <span class="hint">建议先上传同一主题的一组照片</span>
+                  </span>
+                </label>
+                <div class="progress-wrap hidden" id="uploadProgress">
+                  <strong id="progressText">正在导入照片</strong>
+                  <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+                </div>
+                <div class="row" style="margin-top: 14px">
+                  <button class="btn primary" id="goSettingsBtn" disabled>下一步：发布设置</button>
+                </div>
+              </div>
+              <div>
+                <h2>已上传 <span id="photoCount">0</span> 张</h2>
+                <div class="thumb-grid" id="thumbGrid"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel hidden" id="settingsStep">
+            <h2>选择朋友圈发布数量</h2>
+            <p class="hint">选择这次准备发几张图。每一张图点开后都是长图，朋友圈里会把它们的中心封面拼成完整画面。</p>
+            <div class="layout-options" id="layoutOptions"></div>
+            <p id="allocationHint" class="hint"></p>
+            <div class="row">
+              <button class="btn" data-nav="upload">返回</button>
+              <button class="btn primary" id="goCoverBtn">下一步：选择封面</button>
+            </div>
+          </section>
+
+          <section class="panel hidden" id="coverStep">
+            <div class="cover-workspace">
+              <div>
+                <h2>选择 feed 封面图</h2>
+                <p class="hint">封面会被切成对应数量的中心块，分别放到每张长图正中间。</p>
+                <label class="btn" style="display:inline-flex;align-items:center;margin-bottom:12px">
+                  额外上传封面
+                  <input class="file-input" id="coverInput" type="file" accept="image/*" />
+                </label>
+                <div class="cover-picker" id="coverPicker"></div>
+              </div>
+              <div>
+                <h2>调整封面裁切</h2>
+                <p class="hint">拖动图片调整位置，用缩放按钮控制封面在切分画布中的大小。</p>
+                <div class="cover-stage">
+                  <div class="cover-cropper" id="coverCropper"></div>
+                  <div class="crop-controls">
+                    <button class="btn" id="coverZoomOut">缩小</button>
+                    <input class="range" id="coverZoom" type="range" min="1" max="3" step="0.01" value="1" />
+                    <button class="btn" id="coverZoomIn">放大</button>
+                    <button class="btn" id="coverCenter">居中</button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h2>切分后预览</h2>
+                <div class="feed-preview" id="coverPreview"></div>
+                <div class="row" style="margin-top: 14px">
+                  <button class="btn" data-nav="settings">返回</button>
+                  <button class="btn primary" id="generateBtn" disabled>确认封面并生成长图</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="hidden" id="editorStep">
+            <div class="editor-shell">
+              <aside class="panel">
+                <h2>长图切换</h2>
+                <div class="strip" id="stripList"></div>
+              </aside>
+              <section class="canvas-area">
+                <div id="warningHost"></div>
+                <div class="panel">
+                  <div class="row" style="justify-content:space-between;align-items:flex-start">
+                    <div>
+                      <h2>当前长图编辑画布（唯一主编辑区）</h2>
+                      <p class="hint">视图缩放只影响编辑，不影响导出。拖动排序手柄调整顺序，拖动照片本体调整裁切。</p>
+                    </div>
+                    <button class="btn" data-nav="cover">返回封面</button>
+                  </div>
+                  <div class="editor-zoom" id="editorZoomControls">
+                    <button class="btn" data-editor-zoom-step="-0.1">-</button>
+                    <input class="range zoom-slider" id="editorZoomSlider" type="range" min="25" max="100" step="5" value="100" />
+                    <span class="zoom-value" id="editorZoomValue">100%</span>
+                    <button class="btn" data-editor-zoom-step="0.1">+</button>
+                  </div>
+                  <div class="canvas-zoom-host" id="canvasZoomHost">
+                    <div class="long-canvas" id="longCanvas"></div>
+                  </div>
+                </div>
+                <div class="pool">
+                  <div class="row" style="justify-content:space-between;margin-bottom:10px">
+                    <div>
+                      <strong>照片素材库</strong>
+                      <span class="hint">所有已上传照片都可拖入，已使用照片也可重复使用。</span>
+                    </div>
+                    <label class="btn">
+                      继续添加照片
+                      <input class="file-input" id="moreInput" type="file" accept="image/*" multiple />
+                    </label>
+                  </div>
+                  <div class="progress-wrap hidden" id="libraryProgress">
+                    <strong id="libraryProgressText">正在导入照片</strong>
+                    <div class="progress-track"><div class="progress-bar" id="libraryProgressBar"></div></div>
+                  </div>
+                  <div class="pool-tabs" id="poolTabs"></div>
+                  <div class="pool-row" id="poolRow"></div>
+                </div>
+              </section>
+              <aside class="panel long-preview-panel">
+                <h2>整张长图预览</h2>
+                <p class="hint">一屏检查整体节奏和中心位置。</p>
+                <div class="preview-controls">
+                  <button class="btn" data-preview-zoom-step="-0.1">-</button>
+                  <input class="range zoom-slider" id="previewZoomSlider" type="range" min="100" max="240" step="10" value="100" />
+                  <span class="zoom-value" id="previewZoomValue">100%</span>
+                  <button class="btn" data-preview-zoom-step="0.1">+</button>
+                </div>
+                <div class="full-preview" id="fullPreview"></div>
+              </aside>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div class="drawer hidden" id="photoDrawer">
+      <h3 id="drawerTitle">已选中照片</h3>
+      <button class="btn" id="replaceBtn">替换图片</button>
+      <button class="btn" id="movePoolBtn">从当前长图移除</button>
+      <button class="btn danger" id="deleteBtn">删除图片</button>
+      <input class="file-input" id="replaceInput" type="file" accept="image/*" />
+    </div>
+
+    <div class="modal" id="previewModal">
+      <div class="modal-card">
+        <div class="row" style="justify-content:space-between;margin-bottom:14px">
+          <div>
+            <h2 style="margin:0">朋友圈预览</h2>
+            <p class="hint" style="margin:4px 0 0">这里展示发布后的 feed 拼接效果。</p>
+          </div>
+          <button class="btn" id="closePreviewBtn">关闭</button>
+        </div>
+        <div class="feed-preview" id="modalFeedPreview"></div>
+        <p class="preview-note">查看朋友圈预览 = 从即将导出的每张长图中心裁切 1:1 后拼合检查。</p>
+      </div>
+    </div>
+
+    <script>
+      const layouts = {
+        2: { rows: 1, cols: 2, label: "2:1 封面" },
+        3: { rows: 1, cols: 3, label: "3:1 封面" },
+        4: { rows: 2, cols: 2, label: "1:1 封面" },
+        6: { rows: 2, cols: 3, label: "3:2 封面" },
+        9: { rows: 3, cols: 3, label: "1:1 封面" },
+      };
+
+      const state = {
+        step: "upload",
+        photos: [],
+        unused: [],
+        libraryTab: "unused",
+        editorScale: 1,
+        previewScale: 1,
+        renderToken: 0,
+        coverPreviewToken: 0,
+        balanceGuide: null,
+        outputCount: 9,
+        coverId: null,
+        externalCover: null,
+        coverTransform: { scale: 1, x: 0, y: 0 },
+        coverSlices: [],
+        coverSliceSignature: "",
+        collages: [],
+        activeCollage: 0,
+        selected: null,
+      };
+
+      const els = {
+        steps: document.querySelectorAll("[data-step-indicator]"),
+        uploadStep: document.getElementById("uploadStep"),
+        settingsStep: document.getElementById("settingsStep"),
+        coverStep: document.getElementById("coverStep"),
+        editorStep: document.getElementById("editorStep"),
+        photoInput: document.getElementById("photoInput"),
+        moreInput: document.getElementById("moreInput"),
+        coverInput: document.getElementById("coverInput"),
+        uploadZone: document.getElementById("uploadZone"),
+        uploadProgress: document.getElementById("uploadProgress"),
+        progressText: document.getElementById("progressText"),
+        progressBar: document.getElementById("progressBar"),
+        libraryProgress: document.getElementById("libraryProgress"),
+        libraryProgressText: document.getElementById("libraryProgressText"),
+        libraryProgressBar: document.getElementById("libraryProgressBar"),
+        thumbGrid: document.getElementById("thumbGrid"),
+        photoCount: document.getElementById("photoCount"),
+        goSettingsBtn: document.getElementById("goSettingsBtn"),
+        layoutOptions: document.getElementById("layoutOptions"),
+        allocationHint: document.getElementById("allocationHint"),
+        goCoverBtn: document.getElementById("goCoverBtn"),
+        coverPicker: document.getElementById("coverPicker"),
+        coverCropper: document.getElementById("coverCropper"),
+        coverZoom: document.getElementById("coverZoom"),
+        coverZoomOut: document.getElementById("coverZoomOut"),
+        coverZoomIn: document.getElementById("coverZoomIn"),
+        coverCenter: document.getElementById("coverCenter"),
+        coverPreview: document.getElementById("coverPreview"),
+        generateBtn: document.getElementById("generateBtn"),
+        stripList: document.getElementById("stripList"),
+        warningHost: document.getElementById("warningHost"),
+        canvasZoomHost: document.getElementById("canvasZoomHost"),
+        longCanvas: document.getElementById("longCanvas"),
+        poolTabs: document.getElementById("poolTabs"),
+        poolRow: document.getElementById("poolRow"),
+        editorZoomSlider: document.getElementById("editorZoomSlider"),
+        editorZoomValue: document.getElementById("editorZoomValue"),
+        previewZoomSlider: document.getElementById("previewZoomSlider"),
+        previewZoomValue: document.getElementById("previewZoomValue"),
+        photoDrawer: document.getElementById("photoDrawer"),
+        drawerTitle: document.getElementById("drawerTitle"),
+        previewBtn: document.getElementById("previewBtn"),
+        autoFixBtn: document.getElementById("autoFixBtn"),
+        exportBtn: document.getElementById("exportBtn"),
+        backStepBtn: document.getElementById("backStepBtn"),
+        previewModal: document.getElementById("previewModal"),
+        closePreviewBtn: document.getElementById("closePreviewBtn"),
+        modalFeedPreview: document.getElementById("modalFeedPreview"),
+        fullPreview: document.getElementById("fullPreview"),
+        projectStatus: document.getElementById("projectStatus"),
+        replaceInput: document.getElementById("replaceInput"),
+        clearProjectBtn: document.getElementById("clearProjectBtn"),
+      };
+
+      const uid = () => `img_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const EDITOR_CANVAS_WIDTH = 520;
+      const EDITOR_FRAME_WIDTH = 488;
+      const stepOrder = ["upload", "settings", "cover", "editor"];
+
+      const fileToDataUrl = (file) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+      const loadImage = (src) =>
+        new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = src;
+        });
+
+      async function addFiles(files, mode = "photos") {
+        const incoming = [...files].filter((file) => file.type.startsWith("image/"));
+        if (!incoming.length) return;
+        if (mode === "photos" && state.photos.length + incoming.length > 100) {
+          alert("最多支持 100 张内容照片。");
+          return;
+        }
+        const progressTarget = state.step === "editor" && mode === "photos" ? "library" : "main";
+        showProgress(0, incoming.length, mode === "cover" ? "正在导入封面图" : "正在导入照片", progressTarget);
+        const mapped = [];
+        for (let i = 0; i < incoming.length; i += 1) {
+          const file = incoming[i];
+          const raw = await fileToDataUrl(file);
+          const src = await resizeImage(raw, mode === "cover" ? 2400 : 1800);
+          const meta = await imageMeta(src);
+          mapped.push({ id: uid(), name: file.name, src, ...meta });
+          showProgress(i + 1, incoming.length, mode === "cover" ? "正在导入封面图" : "正在导入照片", progressTarget);
+        }
+        if (mode === "cover") {
+          state.externalCover = mapped[0];
+          state.coverId = mapped[0].id;
+          state.coverTransform = { scale: 1, x: 0, y: 0 };
+        } else {
+          state.photos.push(...mapped);
+        }
+        hideProgressSoon(progressTarget);
+        save();
+        render();
+      }
+
+      function showProgress(done, total, label, target = "main") {
+        const wrap = target === "library" ? els.libraryProgress : els.uploadProgress;
+        const text = target === "library" ? els.libraryProgressText : els.progressText;
+        const bar = target === "library" ? els.libraryProgressBar : els.progressBar;
+        wrap?.classList.remove("hidden");
+        if (text) text.textContent = `${label} ${done} / ${total}`;
+        if (bar) bar.style.width = `${total ? Math.round((done / total) * 100) : 0}%`;
+      }
+
+      function hideProgressSoon(target = "main") {
+        const wrap = target === "library" ? els.libraryProgress : els.uploadProgress;
+        setTimeout(() => wrap?.classList.add("hidden"), 700);
+      }
+
+      async function imageMeta(src) {
+        const img = await loadImage(src);
+        return { width: img.width, height: img.height };
+      }
+
+      async function resizeImage(src, maxSize) {
+        const img = await loadImage(src);
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL("image/jpeg", 0.86);
+      }
+
+      function setStep(step) {
+        if (!canEnterStep(step)) return;
+        if (state.step === "editor" && step !== "editor") {
+          state.selected = null;
+          state.balanceGuide = null;
+        }
+        state.step = step;
+        save();
+        render();
+      }
+
+      function previousStep() {
+        const index = stepOrder.indexOf(state.step);
+        return index > 0 ? stepOrder[index - 1] : null;
+      }
+
+      function canEnterStep(step) {
+        if (step === "upload") return true;
+        if (step === "settings") return state.photos.length > 0;
+        if (step === "cover") return state.photos.length > 0;
+        if (step === "editor") return state.collages.length > 0;
+        return false;
+      }
+
+      function currentLayout() {
+        return layouts[state.outputCount];
+      }
+
+      function getCoverImage() {
+        if (state.externalCover?.id === state.coverId) return state.externalCover;
+        return state.photos.find((photo) => photo.id === state.coverId) || null;
+      }
+
+      function availableContentPhotos() {
+        return state.photos.filter((photo) => photo.id !== state.coverId);
+      }
+
+      function allocationMessage() {
+        const count = availableContentPhotos().length;
+        const min = state.outputCount * 2;
+        if (count === 0) return "还没有可用于长图上下半区的内容照片。";
+        if (count < min) return `照片偏少。生成 ${state.outputCount} 张长图，至少建议准备 ${min} 张内容照片。`;
+        if (count % 2 === 1) return `当前有 ${count} 张内容照片。为了上下成对排版，系统会先使用 ${count - 1} 张，剩余照片仍保留在素材库。`;
+        if (count > state.outputCount * 10) return `照片较多。系统会先自动挑选一部分排版，其他照片保留在素材库，后续可替换或拖入。`;
+        return "每个封面切片都是正方形，发布后会在朋友圈里拼回完整封面。";
+      }
+
+      function distributePhotos(photos, outputCount) {
+        const min = outputCount * 2;
+        if (photos.length < min) return null;
+        const usableLimit = Math.min(photos.length - (photos.length % 2), outputCount * 10);
+        const usable = photos.slice(0, usableLimit);
+        const extra = photos.slice(usableLimit);
+        const counts = Array(outputCount).fill(2);
+        let remaining = usable.length - min;
+        let cursor = 0;
+        while (remaining >= 2) {
+          if (counts[cursor] < 10) {
+            counts[cursor] += 2;
+            remaining -= 2;
+          }
+          cursor = (cursor + 1) % outputCount;
+          if (counts.every((count) => count === 10)) break;
+        }
+        const groups = counts.map((count) => ({ count, photos: [], total: 0 }));
+        const sorted = [...usable].sort((a, b) => photoHeightScore(b) - photoHeightScore(a));
+        sorted.forEach((photo) => {
+          const target = groups
+            .filter((group) => group.photos.length < group.count)
+            .sort((a, b) => a.total - b.total || a.photos.length - b.photos.length)[0];
+          target.photos.push(photo);
+          target.total += photoHeightScore(photo);
+        });
+        return { groups, unused: extra.map((photo) => photo.id) };
+      }
+
+      function autoFrameRatio(photo) {
+        const ratio = (photo?.width || 1) / (photo?.height || 1);
+        if (ratio >= 1.15) return "3:2";
+        if (ratio <= 0.87) return "2:3";
+        return "1:1";
+      }
+
+      function frameHeight(frameRatio, width = 1080) {
+        if (frameRatio === "3:2") return Math.round((width * 2) / 3);
+        if (frameRatio === "2:3") return Math.round((width * 3) / 2);
+        return width;
+      }
+
+      function frameLabel(frameRatio) {
+        return { "3:2": "横图 3:2", "1:1": "方图 1:1", "2:3": "竖图 2:3" }[frameRatio] || "方图 1:1";
+      }
+
+      function frameModeToRatio(frameMode, photo) {
+        if (frameMode === "landscape") return "3:2";
+        if (frameMode === "square") return "1:1";
+        if (frameMode === "portrait") return "2:3";
+        return autoFrameRatio(photo);
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function clampImageOffset(offset, imageSize, boxSize) {
+        const spare = Math.max(0, (imageSize - boxSize) / 2);
+        return clamp(offset || 0, -spare, spare);
+      }
+
+      function clampedBlockOffset(photo, boxW, boxH, block) {
+        if (!photo) return { x: 0, y: 0, drawW: boxW, drawH: boxH };
+        const base = Math.max(boxW / photo.width, boxH / photo.height);
+        const scale = base * (block.scale || 1);
+        const drawW = photo.width * scale;
+        const drawH = photo.height * scale;
+        return {
+          x: clampImageOffset(block.x || 0, drawW, boxW),
+          y: clampImageOffset(block.y || 0, drawH, boxH),
+          drawW,
+          drawH,
+        };
+      }
+
+      function clampBlockCrop(block) {
+        const photo = photoById(block?.photoId);
+        if (!photo || !block) return block;
+        const boxW = EDITOR_FRAME_WIDTH;
+        const boxH = previewBlockHeight(block);
+        const fit = clampedBlockOffset(photo, boxW, boxH, block);
+        block.x = fit.x;
+        block.y = fit.y;
+        return block;
+      }
+
+      function clampCoverTransform(transform, img, width, height) {
+        const base = Math.max(width / img.width, height / img.height);
+        const scale = base * (transform?.scale || 1);
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+        return {
+          scale: transform?.scale || 1,
+          x: clampImageOffset((transform?.x || 0) * width, drawW, width) / width,
+          y: clampImageOffset((transform?.y || 0) * height, drawH, height) / height,
+          drawW,
+          drawH,
+        };
+      }
+
+      function blockFrameRatio(block) {
+        const photo = photoById(block?.photoId);
+        if (!block) return "1:1";
+        if (!block.frameMode || block.frameMode === "auto") return block.resolvedFrame || frameModeToRatio("auto", photo);
+        return frameModeToRatio(block.frameMode, photo);
+      }
+
+      function photoHeightScore(photo) {
+        return frameHeight(autoFrameRatio(photo), 1080);
+      }
+
+      function splitBalancedPhotoIds(photos) {
+        const half = Math.floor(photos.length / 2);
+        const top = [];
+        const bottom = [];
+        let topH = 0;
+        let bottomH = 0;
+        [...photos]
+          .sort((a, b) => photoHeightScore(b) - photoHeightScore(a))
+          .forEach((photo) => {
+            const score = photoHeightScore(photo);
+            if ((topH <= bottomH && top.length < half) || bottom.length >= half) {
+              top.push(photo.id);
+              topH += score;
+            } else {
+              bottom.push(photo.id);
+              bottomH += score;
+            }
+          });
+        return { top, bottom };
+      }
+
+      function naturalFramePenalty(photo, frameRatio) {
+        const natural = autoFrameRatio(photo);
+        if (natural === frameRatio) return 0;
+        if (natural === "1:1" || frameRatio === "1:1") return 90;
+        return 220;
+      }
+
+      function optimizeAutoFrames(group) {
+        const choices = ["3:2", "1:1", "2:3"];
+        const tuneSection = (shortSection, tallSection) => {
+          let guard = 0;
+          while (sectionExportHeight(group[tallSection]) - sectionExportHeight(group[shortSection]) > 120 && guard < 24) {
+            guard += 1;
+            let best = null;
+            group[shortSection].forEach((block, index) => {
+              if (block.frameMode && block.frameMode !== "auto") return;
+              const photo = photoById(block.photoId);
+              const current = blockFrameRatio(block);
+              choices.forEach((choice) => {
+                if (frameHeight(choice, 1080) <= frameHeight(current, 1080)) return;
+                const oldResolved = block.resolvedFrame;
+                block.resolvedFrame = choice;
+                const diff = Math.abs(sectionExportHeight(group.top) - sectionExportHeight(group.bottom));
+                const score = diff + naturalFramePenalty(photo, choice);
+                block.resolvedFrame = oldResolved;
+                if (!best || score < best.score) best = { index, choice, score };
+              });
+            });
+            if (!best) break;
+            group[shortSection][best.index].resolvedFrame = best.choice;
+          }
+        };
+        group.top.forEach((block) => {
+          if (!block.frameMode || block.frameMode === "auto") block.resolvedFrame = autoFrameRatio(photoById(block.photoId));
+        });
+        group.bottom.forEach((block) => {
+          if (!block.frameMode || block.frameMode === "auto") block.resolvedFrame = autoFrameRatio(photoById(block.photoId));
+        });
+        const topH = sectionExportHeight(group.top);
+        const bottomH = sectionExportHeight(group.bottom);
+        if (topH < bottomH) tuneSection("top", "bottom");
+        if (bottomH < topH) tuneSection("bottom", "top");
+      }
+
+      function sectionExportHeight(blocks) {
+        return blocks.reduce((sum, block) => sum + exportBlockHeight(block, 1080), 0);
+      }
+
+      async function createCoverSlices() {
+        const cover = getCoverImage();
+        if (!cover) return [];
+        const img = await loadImage(cover.src);
+        const { rows, cols } = currentLayout();
+        const cell = 900;
+        const stageW = cols * cell;
+        const stageH = rows * cell;
+        const composed = document.createElement("canvas");
+        composed.width = stageW;
+        composed.height = stageH;
+        const composedCtx = composed.getContext("2d");
+        composedCtx.fillStyle = "#ffffff";
+        composedCtx.fillRect(0, 0, stageW, stageH);
+        drawTransformedImage(composedCtx, img, stageW, stageH, state.coverTransform);
+        const slices = [];
+        for (let r = 0; r < rows; r += 1) {
+          for (let c = 0; c < cols; c += 1) {
+            const canvas = document.createElement("canvas");
+            canvas.width = cell;
+            canvas.height = cell;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(composed, c * cell, r * cell, cell, cell, 0, 0, cell, cell);
+            slices.push(canvas.toDataURL("image/jpeg", 0.92));
+          }
+        }
+        return slices;
+      }
+
+      function drawTransformedImage(ctx, img, width, height, transform) {
+        const base = Math.max(width / img.width, height / img.height);
+        const scale = base * (transform?.scale || 1);
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+        const clampedX = clampImageOffset((transform?.x || 0) * width, drawW, width);
+        const clampedY = clampImageOffset((transform?.y || 0) * height, drawH, height);
+        const x = (width - drawW) / 2 + clampedX;
+        const y = (height - drawH) / 2 + clampedY;
+        ctx.drawImage(img, x, y, drawW, drawH);
+      }
+
+      function layoutRatio() {
+        const { rows, cols } = currentLayout();
+        return cols / rows;
+      }
+
+      function currentCoverSignature() {
+        const t = state.coverTransform || {};
+        return [state.outputCount, state.coverId || "", Number(t.scale || 1).toFixed(3), Number(t.x || 0).toFixed(3), Number(t.y || 0).toFixed(3)].join("|");
+      }
+
+      async function refreshCollageSlicesIfNeeded() {
+        if (!state.collages.length || !getCoverImage()) return;
+        const signature = currentCoverSignature();
+        if (state.coverSliceSignature === signature && state.coverSlices.length === state.outputCount) return;
+        const slices = await createCoverSlices();
+        state.coverSlices = slices;
+        state.coverSliceSignature = signature;
+        state.collages.forEach((group, index) => {
+          if (slices[index]) group.slice = slices[index];
+        });
+        save();
+        if (state.step === "editor") renderEditor();
+      }
+
+      async function generateCollages() {
+        const cover = getCoverImage();
+        if (!cover) {
+          alert("请先选择封面图。");
+          return;
+        }
+        if (state.collages.length && !confirm("重新生成会覆盖当前长图里的排序和裁切调整，确认继续吗？")) {
+          return;
+        }
+        const content = availableContentPhotos();
+        const allocation = distributePhotos(content, state.outputCount);
+        if (!allocation) {
+          alert(`照片偏少。生成 ${state.outputCount} 张长图至少建议 ${state.outputCount * 2} 张内容照片。`);
+          return;
+        }
+        state.coverSlices = await createCoverSlices();
+        state.coverSliceSignature = currentCoverSignature();
+        state.unused = allocation.unused;
+        state.collages = allocation.groups.map((group, index) => {
+          const balanced = splitBalancedPhotoIds(group.photos);
+          const collage = {
+            id: `collage_${index}`,
+            top: balanced.top.map(createBlock),
+            bottom: balanced.bottom.map(createBlock),
+            slice: state.coverSlices[index],
+          };
+          optimizeAutoFrames(collage);
+          return collage;
+        });
+        state.activeCollage = 0;
+        state.selected = null;
+        setStep("editor");
+      }
+
+      function createBlock(photoId, frameRatio) {
+        const photo = photoById(photoId);
+        const frameMode =
+          frameRatio === "3:2" ? "landscape" : frameRatio === "1:1" ? "square" : frameRatio === "2:3" ? "portrait" : "auto";
+        return { id: uid(), photoId, frameMode, resolvedFrame: frameMode === "auto" ? autoFrameRatio(photo) : undefined, scale: 1, x: 0, y: 0 };
+      }
+
+      function photoById(id) {
+        return state.photos.find((photo) => photo.id === id);
+      }
+
+      function allUsedIds() {
+        return new Set(state.collages.flatMap((group) => [...group.top, ...group.bottom].map((block) => block.photoId)));
+      }
+
+      function usageCounts() {
+        const counts = new Map();
+        state.collages.forEach((group) => {
+          [...group.top, ...group.bottom].forEach((block) => {
+            const id = block.photoId || block;
+            counts.set(id, (counts.get(id) || 0) + 1);
+          });
+        });
+        return counts;
+      }
+
+      function groupHasPhoto(group, photoId) {
+        return [...group.top, ...group.bottom].some((block) => (block.photoId || block) === photoId);
+      }
+
+      function isComplete(group) {
+        return group.top.length === group.bottom.length && group.top.length > 0;
+      }
+
+      function selectPhoto(section, index) {
+        state.selected = { groupIndex: state.activeCollage, section, index };
+        renderEditor();
+        save();
+      }
+
+      function selectedGroup() {
+        if (!state.selected) return null;
+        return state.collages[state.selected.groupIndex];
+      }
+
+      function selectedBlock() {
+        const group = selectedGroup();
+        if (!group) return null;
+        return group[state.selected.section][state.selected.index];
+      }
+
+      function removeSelected(toPool = false) {
+        const group = selectedGroup();
+        if (!group) return;
+        const list = group[state.selected.section];
+        list.splice(state.selected.index, 1);
+        state.selected = null;
+        save();
+        renderEditor();
+      }
+
+      function moveSelected(direction) {
+        const group = selectedGroup();
+        if (!group) return;
+        const list = group[state.selected.section];
+        const next = state.selected.index + direction;
+        if (next < 0 || next >= list.length) return;
+        [list[state.selected.index], list[next]] = [list[next], list[state.selected.index]];
+        state.selected.index = next;
+        save();
+        renderEditor();
+      }
+
+      function updateSelectedBlock(patch) {
+        const block = selectedBlock();
+        if (!block) return;
+        Object.assign(block, patch);
+        clampBlockCrop(block);
+        save();
+        renderEditor();
+      }
+
+      function replaceSelectedWith(id) {
+        const group = selectedGroup();
+        if (!group) return;
+        const list = group[state.selected.section];
+        list[state.selected.index] = createBlock(id);
+        save();
+        renderEditor();
+      }
+
+      function sectionPreviewHeight(blocks) {
+        return blocks.reduce((sum, block) => {
+          return sum + previewBlockHeight(block);
+        }, 0);
+      }
+
+      function recommendReplace(section) {
+        const group = state.collages[state.activeCollage];
+        if (!group || !state.photos.length || !group[section].length) {
+          alert("素材库里暂时没有可推荐的照片。");
+          return;
+        }
+        const otherSection = section === "top" ? "bottom" : "top";
+        const currentH = sectionPreviewHeight(group[section]);
+        const otherH = sectionPreviewHeight(group[otherSection]);
+        const counts = usageCounts();
+        let best = null;
+        group[section].forEach((block, blockIndex) => {
+          const oldH = previewBlockHeight(block);
+          state.photos.forEach((candidate) => {
+            if (!candidate || candidate.id === block.photoId || groupHasPhoto(group, candidate.id)) return;
+            ["3:2", "1:1", "2:3"].forEach((frame) => {
+              const candidateBlock = createBlock(candidate.id);
+              candidateBlock.resolvedFrame = frame;
+              const candidateH = previewBlockHeight(candidateBlock);
+              const nextDiff = Math.abs(currentH - oldH + candidateH - otherH);
+              const currentDiff = Math.abs(currentH - otherH);
+              const usage = counts.get(candidate.id) || 0;
+              const score = nextDiff + usage * 24 + naturalFramePenalty(candidate, frame);
+              if (nextDiff < currentDiff && (!best || score < best.score)) {
+                best = { blockIndex, candidateId: candidate.id, frame, nextDiff, score };
+              }
+            });
+          });
+        });
+        if (!best) {
+          alert("没有找到能明显减少补白的照片。可以手动从素材池挑一张试试。");
+          return;
+        }
+        const old = group[section][best.blockIndex];
+        group[section][best.blockIndex] = createBlock(best.candidateId);
+        group[section][best.blockIndex].resolvedFrame = best.frame;
+        group[section][best.blockIndex].frameMode =
+          best.frame === "3:2" ? "landscape" : best.frame === "2:3" ? "portrait" : "square";
+        state.selected = { groupIndex: state.activeCollage, section, index: best.blockIndex };
+        state.balanceGuide = { type: "replace", section, frame: best.frame };
+        save();
+        renderEditor();
+      }
+
+      function recommendAddTo(section) {
+        const group = state.collages[state.activeCollage];
+        if (!group) return;
+        const otherSection = section === "top" ? "bottom" : "top";
+        const currentH = sectionPreviewHeight(group[section]);
+        const otherH = sectionPreviewHeight(group[otherSection]);
+        const counts = usageCounts();
+        const candidates = state.photos
+          .filter((photo) => !groupHasPhoto(group, photo.id))
+          .flatMap((photo) =>
+            ["3:2", "1:1", "2:3"].map((frame) => {
+              const block = createBlock(photo.id);
+              block.resolvedFrame = frame;
+              const nextDiff = Math.abs(currentH + previewBlockHeight(block) - otherH);
+              const usage = counts.get(photo.id) || 0;
+              return { photo, frame, nextDiff, usage, score: nextDiff + usage * 24 + naturalFramePenalty(photo, frame) };
+            })
+          )
+          .sort((a, b) => a.score - b.score);
+        if (!candidates.length) {
+          const fallback = state.photos
+            .flatMap((photo) =>
+              ["3:2", "1:1", "2:3"].map((frame) => {
+                const block = createBlock(photo.id);
+                block.resolvedFrame = frame;
+                const usage = counts.get(photo.id) || 0;
+                const nextDiff = Math.abs(currentH + previewBlockHeight(block) - otherH);
+                return { photo, frame, score: nextDiff + usage * 24 + naturalFramePenalty(photo, frame) };
+              })
+            )
+            .sort((a, b) => a.score - b.score)[0];
+          if (!fallback) {
+            alert("没有可补入的素材，请继续添加照片。");
+            return false;
+          }
+          const block = createBlock(fallback.photo.id);
+          block.resolvedFrame = fallback.frame;
+          block.frameMode = fallback.frame === "3:2" ? "landscape" : fallback.frame === "2:3" ? "portrait" : "square";
+          group[section].push(block);
+          state.selected = { groupIndex: state.activeCollage, section, index: group[section].length - 1 };
+          state.balanceGuide = { type: "add", section, frame: fallback.frame };
+          save();
+          renderEditor();
+          return true;
+        }
+        const block = createBlock(candidates[0].photo.id);
+        block.resolvedFrame = candidates[0].frame;
+        block.frameMode = candidates[0].frame === "3:2" ? "landscape" : candidates[0].frame === "2:3" ? "portrait" : "square";
+        group[section].push(block);
+        state.selected = { groupIndex: state.activeCollage, section, index: group[section].length - 1 };
+        state.balanceGuide = { type: "add", section, frame: candidates[0].frame };
+        save();
+        renderEditor();
+        return true;
+      }
+
+      function hasVisibleBlank(group) {
+        const topH = group.top.reduce((sum, block) => sum + exportBlockHeight(block, 1080), 0);
+        const bottomH = group.bottom.reduce((sum, block) => sum + exportBlockHeight(block, 1080), 0);
+        return Math.abs(topH - bottomH) > 120;
+      }
+
+      function autoFix() {
+        const group = state.collages[state.activeCollage];
+        if (!group) return;
+        while (group.top.length !== group.bottom.length) {
+          const target = group.top.length < group.bottom.length ? "top" : "bottom";
+          if (!recommendAddTo(target)) break;
+        }
+        state.selected = null;
+        save();
+        renderEditor();
+      }
+
+      async function renderLongImage(group) {
+        const width = 1080;
+        const photoHeight = 720;
+        const centerSize = 1080;
+        const topH = group.top.reduce((sum, block) => {
+          return sum + exportBlockHeight(block, width);
+        }, 0);
+        const bottomH = group.bottom.reduce((sum, block) => {
+          return sum + exportBlockHeight(block, width);
+        }, 0);
+        const sideH = Math.max(topH, bottomH);
+        const height = sideH * 2 + centerSize;
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        let y = sideH - topH;
+        for (const block of group.top) {
+          const photo = photoById(block.photoId || block);
+          if (photo) {
+            const blockHeight = exportBlockHeight(block, width);
+            await drawBlock(ctx, photo.src, 0, y, width, blockHeight, block);
+            y += blockHeight;
+          }
+        }
+        y = sideH;
+        await drawCover(ctx, group.slice, 0, y, centerSize, centerSize);
+        y = sideH + centerSize;
+        for (const block of group.bottom) {
+          const photo = photoById(block.photoId || block);
+          if (photo) {
+            const blockHeight = exportBlockHeight(block, width);
+            await drawBlock(ctx, photo.src, 0, y, width, blockHeight, block);
+            y += blockHeight;
+          }
+        }
+        return canvas;
+      }
+
+      function centerCropFromCanvas(canvas) {
+        const size = Math.min(canvas.width, canvas.height);
+        const crop = document.createElement("canvas");
+        crop.width = 900;
+        crop.height = 900;
+        const ctx = crop.getContext("2d");
+        ctx.drawImage(canvas, (canvas.width - size) / 2, (canvas.height - size) / 2, size, size, 0, 0, 900, 900);
+        return crop.toDataURL("image/jpeg", 0.92);
+      }
+
+      async function actualFeedPreviewImages() {
+        const images = [];
+        for (const group of state.collages) {
+          const canvas = await renderLongImage(group);
+          images.push(centerCropFromCanvas(canvas));
+        }
+        return images;
+      }
+
+      async function updateFullPreview() {
+        const group = state.collages[state.activeCollage];
+        if (!group || !els.fullPreview) return;
+        const token = ++state.renderToken;
+        const previewScale = Number.isFinite(Number(state.previewScale)) ? Number(state.previewScale) : 1;
+        if (els.previewZoomSlider) els.previewZoomSlider.value = Math.round(previewScale * 100);
+        if (els.previewZoomValue) els.previewZoomValue.textContent = `${Math.round(previewScale * 100)}%`;
+        els.fullPreview.innerHTML = "<p class=\"hint\">正在生成缩略图...</p>";
+        const canvas = await renderLongImage(group);
+        if (token !== state.renderToken) return;
+        const widthStyle = `${Math.round(previewScale * 100)}%`;
+        const guideTop = ((canvas.height - canvas.width) / 2 / canvas.height) * 100;
+        els.fullPreview.innerHTML = `
+          <div class="preview-image-wrap" style="width:${widthStyle}">
+            <img src="${canvas.toDataURL("image/jpeg", 0.8)}" alt="整张长图缩略预览">
+            <div class="center-crop-guide" style="top:${guideTop}%"></div>
+          </div>`;
+      }
+
+      function exportBlockHeight(block, width) {
+        return frameHeight(blockFrameRatio(block), width);
+      }
+
+      async function drawBlock(ctx, src, x, y, w, h, block) {
+        const img = await loadImage(src);
+        const base = Math.max(w / img.width, h / img.height);
+        const scale = base * (block.scale || 1);
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+        const rawX = (block.x || 0) * (w / EDITOR_FRAME_WIDTH);
+        const rawY = (block.y || 0) * (w / EDITOR_FRAME_WIDTH);
+        const dx = x + (w - drawW) / 2 + clampImageOffset(rawX, drawW, w);
+        const dy = y + (h - drawH) / 2 + clampImageOffset(rawY, drawH, h);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, w, h);
+        ctx.clip();
+        ctx.drawImage(img, dx, dy, drawW, drawH);
+        ctx.restore();
+      }
+
+      async function drawCover(ctx, src, x, y, w, h) {
+        const img = await loadImage(src);
+        const targetRatio = w / h;
+        let sx = 0;
+        let sy = 0;
+        let sw = img.width;
+        let sh = img.height;
+        if (img.width / img.height > targetRatio) {
+          sw = img.height * targetRatio;
+          sx = (img.width - sw) / 2;
+        } else {
+          sh = img.width / targetRatio;
+          sy = (img.height - sh) / 2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+      }
+
+      async function exportAll() {
+        const incomplete = state.collages.some((group) => !isComplete(group));
+        if (incomplete) {
+          alert("还有长图上下不对称，请先补齐或成对删除。");
+          return;
+        }
+        const blankCount = state.collages.filter(hasVisibleBlank).length;
+        if (blankCount && !confirm(`有 ${blankCount} 张长图存在明显补白，可能影响观感。你可以返回调整，或继续导出。`)) {
+          return;
+        }
+        els.exportBtn.disabled = true;
+        els.exportBtn.textContent = "正在导出...";
+        const files = [];
+        for (let i = 0; i < state.collages.length; i += 1) {
+          const canvas = await renderLongImage(state.collages[i]);
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+          files.push({ name: `朋友圈长图_${String(i + 1).padStart(2, "0")}.jpg`, blob });
+        }
+        const zipBlob = await makeZip(files);
+        downloadBlob(zipBlob, "朋友圈中心封面长图.zip");
+        els.exportBtn.textContent = "导出全部";
+        els.exportBtn.disabled = false;
+      }
+
+      function downloadBlob(blob, name) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      async function makeZip(files) {
+        const encoder = new TextEncoder();
+        const localParts = [];
+        const centralParts = [];
+        let offset = 0;
+        for (const file of files) {
+          const data = new Uint8Array(await file.blob.arrayBuffer());
+          const nameBytes = encoder.encode(file.name);
+          const crc = crc32(data);
+          const local = new Uint8Array(30 + nameBytes.length);
+          const view = new DataView(local.buffer);
+          view.setUint32(0, 0x04034b50, true);
+          view.setUint16(4, 20, true);
+          view.setUint16(8, 0, true);
+          view.setUint16(10, 0, true);
+          view.setUint32(14, crc, true);
+          view.setUint32(18, data.length, true);
+          view.setUint32(22, data.length, true);
+          view.setUint16(26, nameBytes.length, true);
+          local.set(nameBytes, 30);
+          localParts.push(local, data);
+
+          const central = new Uint8Array(46 + nameBytes.length);
+          const cv = new DataView(central.buffer);
+          cv.setUint32(0, 0x02014b50, true);
+          cv.setUint16(4, 20, true);
+          cv.setUint16(6, 20, true);
+          cv.setUint16(10, 0, true);
+          cv.setUint16(12, 0, true);
+          cv.setUint32(16, crc, true);
+          cv.setUint32(20, data.length, true);
+          cv.setUint32(24, data.length, true);
+          cv.setUint16(28, nameBytes.length, true);
+          cv.setUint32(42, offset, true);
+          central.set(nameBytes, 46);
+          centralParts.push(central);
+          offset += local.length + data.length;
+        }
+        const centralSize = centralParts.reduce((sum, item) => sum + item.length, 0);
+        const end = new Uint8Array(22);
+        const ev = new DataView(end.buffer);
+        ev.setUint32(0, 0x06054b50, true);
+        ev.setUint16(8, files.length, true);
+        ev.setUint16(10, files.length, true);
+        ev.setUint32(12, centralSize, true);
+        ev.setUint32(16, offset, true);
+        return new Blob([...localParts, ...centralParts, end], { type: "application/zip" });
+      }
+
+      function crc32(bytes) {
+        let crc = -1;
+        for (let i = 0; i < bytes.length; i += 1) {
+          crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xff];
+        }
+        return (crc ^ -1) >>> 0;
+      }
+
+      const crcTable = (() => {
+        const table = new Uint32Array(256);
+        for (let n = 0; n < 256; n += 1) {
+          let c = n;
+          for (let k = 0; k < 8; k += 1) {
+            c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+          }
+          table[n] = c >>> 0;
+        }
+        return table;
+      })();
+
+      function render() {
+        renderSteps();
+        renderUploads();
+        renderLayouts();
+        renderCover();
+        if (state.step === "editor") renderEditor();
+        els.projectStatus.textContent = state.collages.length
+          ? `当前：${String(state.activeCollage + 1).padStart(2, "0")} / ${state.collages.length}｜${state.collages.every(isComplete) ? "结构完整" : "存在待补图"}`
+          : `${state.photos.length} 张照片｜输出 ${state.outputCount} 张`;
+      }
+
+      function renderSteps() {
+        ["upload", "settings", "cover", "editor"].forEach((step) => {
+          document.getElementById(`${step}Step`).classList.toggle("hidden", state.step !== step);
+        });
+        els.steps.forEach((step) => {
+          const target = step.dataset.stepIndicator;
+          const available = canEnterStep(target);
+          step.classList.toggle("active", target === state.step);
+          step.classList.toggle("available", available && target !== state.step);
+          step.classList.toggle("locked", !available);
+          step.disabled = !available;
+        });
+        const prev = previousStep();
+        els.backStepBtn.classList.toggle("hidden", !prev);
+        els.backStepBtn.disabled = !prev || !canEnterStep(prev);
+        els.previewBtn.disabled = !state.collages.length;
+        els.autoFixBtn.disabled = state.step !== "editor";
+        els.exportBtn.disabled = !state.collages.length;
+      }
+
+      function renderUploads() {
+        els.photoCount.textContent = state.photos.length;
+        els.goSettingsBtn.disabled = state.photos.length === 0;
+        els.thumbGrid.innerHTML = state.photos
+          .map(
+            (photo) => `
+            <div class="thumb">
+              <img src="${photo.src}" alt="${photo.name}">
+              <button class="remove" data-remove-photo="${photo.id}">×</button>
+            </div>`
+          )
+          .join("");
+      }
+
+      function renderLayouts() {
+        els.layoutOptions.innerHTML = Object.entries(layouts)
+          .map(([count, layout]) => {
+            const active = Number(count) === state.outputCount ? "active" : "";
+            return `
+              <button class="option ${active}" data-layout="${count}">
+                <div class="mini-layout" style="grid-template-columns: repeat(${layout.cols}, 1fr); grid-template-rows: repeat(${layout.rows}, 1fr)">
+                  ${Array.from({ length: Number(count) }, () => "<span></span>").join("")}
+                </div>
+                <strong>${count} 张</strong>
+                <div class="hint">${layoutCopy(Number(count))}</div>
+                <div class="hint">封面切成 ${count} 个正方形</div>
+              </button>`;
+          })
+          .join("");
+        els.allocationHint.textContent = allocationMessage();
+      }
+
+      function layoutCopy(count) {
+        return {
+          2: "2 张并排，适合横向封面",
+          3: "三张横排，适合超宽封面",
+          4: "2×2 排列，适合方形封面",
+          6: "2×3 排列，适合宽幅封面",
+          9: "3×3 九宫格，适合完整大封面",
+        }[count];
+      }
+
+      function renderCover() {
+        const choices = [state.externalCover, ...state.photos].filter(Boolean);
+        els.coverPicker.innerHTML = choices
+          .map(
+            (photo) => `
+            <button class="cover-choice ${photo.id === state.coverId ? "active" : ""}" data-cover="${photo.id}">
+              <img src="${photo.src}" alt="${photo.name}">
+            </button>`
+          )
+          .join("");
+        els.generateBtn.disabled = !getCoverImage();
+        renderCoverCropper();
+        refreshCoverPreview();
+      }
+
+      async function refreshCoverPreview() {
+        const token = ++state.coverPreviewToken;
+        if (!getCoverImage()) {
+          renderFeedPreview(els.coverPreview, []);
+          return;
+        }
+        renderFeedPreview(els.coverPreview, []);
+        const slices = await createCoverSlices();
+        if (token !== state.coverPreviewToken) return;
+        renderFeedPreview(els.coverPreview, slices);
+      }
+
+      function renderCoverCropper() {
+        const cover = getCoverImage();
+        if (!cover) {
+          els.coverCropper.innerHTML = "";
+          return;
+        }
+        const { rows, cols } = currentLayout();
+        els.coverCropper.style.setProperty("--cover-ratio", `${cols} / ${rows}`);
+        els.coverZoom.value = state.coverTransform.scale;
+        const img = new Image();
+        img.src = cover.src;
+        img.onload = () => {
+          const box = els.coverCropper.getBoundingClientRect();
+          const base = Math.max(box.width / img.naturalWidth, box.height / img.naturalHeight);
+          const scale = base * state.coverTransform.scale;
+          const w = img.naturalWidth * scale;
+          const h = img.naturalHeight * scale;
+          const fixed = clampCoverTransform(state.coverTransform, img, box.width, box.height);
+          state.coverTransform.x = fixed.x;
+          state.coverTransform.y = fixed.y;
+          els.coverCropper.innerHTML = `
+            <img src="${cover.src}" style="width:${w}px;height:${h}px;left:${(box.width - w) / 2 + fixed.x * box.width}px;top:${(box.height - h) / 2 + fixed.y * box.height}px" alt="">
+            <div class="grid-lines" style="grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},1fr)">
+              ${Array.from({ length: rows * cols }, () => "<span></span>").join("")}
+            </div>`;
+        };
+      }
+
+      function renderFeedPreview(host, images) {
+        const { rows, cols } = currentLayout();
+        host.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+        host.style.aspectRatio = `${cols} / ${rows}`;
+        host.classList.toggle("wide", cols > rows);
+        host.innerHTML = Array.from({ length: state.outputCount })
+          .map((_, index) => {
+            const src = images[index] || images[0] || "";
+            return `<div class="feed-cell">${src ? `<img src="${src}" alt="">` : ""}</div>`;
+          })
+          .join("");
+      }
+
+      function renderEditor() {
+        normalizeCollages();
+        refreshCollageSlicesIfNeeded();
+        if (els.canvasZoomHost) {
+          els.canvasZoomHost.style.height = "auto";
+        }
+        els.stripList.innerHTML = state.collages
+          .map(
+            (group, index) => `
+            <button class="strip-card ${index === state.activeCollage ? "active" : ""}" data-collage="${index}">
+              <div class="strip-top">
+                <span>${String(index + 1).padStart(2, "0")}</span>
+                <span class="dot ${isComplete(group) ? "" : "warn"}"></span>
+              </div>
+              <div class="strip-mini">
+                <img src="${group.slice}" alt="封面切片 ${index + 1}">
+              </div>
+              <div class="hint">${isComplete(group) ? "完整" : "待补图"}</div>
+            </button>`
+          )
+          .join("");
+
+        const group = state.collages[state.activeCollage];
+        if (!group) return;
+        if (!isComplete(group)) {
+          const missingSide = group.top.length < group.bottom.length ? "top" : "bottom";
+          const missingLabel = missingSide === "top" ? "上半区" : "下半区";
+          els.warningHost.innerHTML = `
+            <div class="status-banner">
+              <span>当前长图上下数量不对称。${missingLabel}需要补 1 张照片，系统会按标准容器高度推荐最合适的素材。</span>
+              <button class="btn" data-recommend-add="${missingSide}">推荐新增</button>
+            </div>`;
+        } else {
+          els.warningHost.innerHTML = "";
+        }
+        const previewBalance = previewBalanceMetrics(group);
+        if (isComplete(group) && Math.max(previewBalance.topPad, previewBalance.bottomPad) > 48) {
+          const shortSide = previewBalance.topPad > previewBalance.bottomPad ? "top" : "bottom";
+          const label = shortSide === "top" ? "上半区" : "下半区";
+          els.warningHost.innerHTML = `
+            <div class="status-banner">
+              <span>${label}高度偏短，最终导出会通过留白保持中心封面居中。建议先优化容器或补图。</span>
+              <button class="btn" data-recommend-replace="${shortSide}">推荐替换</button>
+              <button class="btn" data-recommend-add="${shortSide}">推荐新增</button>
+            </div>`;
+        }
+        const editorScale = Number.isFinite(Number(state.editorScale)) ? Number(state.editorScale) : 1;
+        if (els.editorZoomSlider) els.editorZoomSlider.value = Math.round(editorScale * 100);
+        if (els.editorZoomValue) els.editorZoomValue.textContent = `${Math.round(editorScale * 100)}%`;
+        els.longCanvas.style.width = `${EDITOR_CANVAS_WIDTH}px`;
+        els.longCanvas.style.transform = `scale(${editorScale})`;
+        els.longCanvas.classList.toggle("zoomed", editorScale < 0.75);
+        els.longCanvas.innerHTML = `
+          <div class="section-label">上半区 ${group.top.length} 张</div>
+          <div data-drop-section="top">${group.top.map((block, index) => photoBlock(block, "top", index)).join("")}</div>
+          <div class="cover-block">
+            <img src="${group.slice}" alt="中心封面切片">
+            <div class="cover-lock">中心封面切片｜锁定｜朋友圈预览区域</div>
+          </div>
+          <div class="section-label">下半区 ${group.bottom.length} 张</div>
+          <div data-drop-section="bottom">${group.bottom.map((block, index) => photoBlock(block, "bottom", index)).join("")}</div>
+        `;
+        renderPool();
+        renderDrawer();
+        updateFullPreview();
+        requestAnimationFrame(syncCanvasZoomHostHeight);
+      }
+
+      function syncCanvasZoomHostHeight() {
+        if (!els.canvasZoomHost || !els.longCanvas) return;
+        const rect = els.longCanvas.getBoundingClientRect();
+        els.canvasZoomHost.style.height = `${Math.max(260, Math.ceil(rect.height + 24))}px`;
+      }
+
+      function balanceSpacer(section, pad) {
+        if (!pad) return "";
+        const height = Math.max(74, Math.min(180, pad));
+        const label = section === "top" ? "上半区" : "下半区";
+        return `
+          <div class="balance-spacer" style="min-height:${height}px" data-balance-section="${section}">
+            <strong>${label}高度偏短，导出会出现补白</strong>
+            <span>建议替换为相近比例照片，减少留白。中心封面仍会保持在整张长图正中。</span>
+            <div class="balance-actions">
+              <button class="small-btn" data-recommend-replace="${section}">推荐替换</button>
+              <button class="small-btn" data-recommend-add="${section}">推荐新增</button>
+              <button class="small-btn" data-accept-blank>接受补白</button>
+            </div>
+          </div>`;
+      }
+
+      function previewBalanceMetrics(group) {
+        const topH = group.top.reduce((sum, block) => {
+          return sum + previewBlockHeight(block);
+        }, 0);
+        const bottomH = group.bottom.reduce((sum, block) => {
+          return sum + previewBlockHeight(block);
+        }, 0);
+        const sideH = Math.max(topH, bottomH);
+        return { topPad: sideH - topH, bottomPad: sideH - bottomH };
+      }
+
+      function normalizeCollages() {
+        state.collages.forEach((group) => {
+          group.top = group.top.map((block) => (typeof block === "string" ? createBlock(block) : block));
+          group.bottom = group.bottom.map((block) => (typeof block === "string" ? createBlock(block) : block));
+          group.top.forEach((block) => {
+            if (!block.frameMode) {
+              block.frameMode = block.frameRatio
+                ? block.frameRatio === "3:2"
+                  ? "landscape"
+                  : block.frameRatio === "2:3"
+                    ? "portrait"
+                    : "square"
+                : "auto";
+            }
+            delete block.frameRatio;
+          });
+          group.bottom.forEach((block) => {
+            if (!block.frameMode) {
+              block.frameMode = block.frameRatio
+                ? block.frameRatio === "3:2"
+                  ? "landscape"
+                  : block.frameRatio === "2:3"
+                    ? "portrait"
+                    : "square"
+                : "auto";
+            }
+            delete block.frameRatio;
+          });
+        });
+      }
+
+      function photoBlock(block, section, index) {
+        if (typeof block === "string") block = createBlock(block);
+        const photo = photoById(block.photoId);
+        const selected =
+          state.selected &&
+          state.selected.groupIndex === state.activeCollage &&
+          state.selected.section === section &&
+          state.selected.index === index;
+        const height = previewBlockHeight(block);
+        const boxW = EDITOR_FRAME_WIDTH;
+        const fit = imageFit(photo, boxW, height, block);
+        return `
+          <div class="photo-block ${selected ? "selected" : ""}" data-photo-block="${block.id}" data-section="${section}" data-index="${index}">
+            <div class="photo-viewport" style="height:${height}px" data-crop-target="${section}:${index}">
+              <img src="${photo?.src || ""}" alt="${photo?.name || ""}" style="width:${fit.w}px;height:${fit.h}px;transform:translate(${fit.x}, ${fit.y})">
+            </div>
+            <span class="drag" draggable="true" data-sort-handle>拖动排序</span>
+            <div class="block-tools">
+              <button class="tool" data-select-photo="${section}:${index}">选择</button>
+              <button class="tool" data-quick-remove="${section}:${index}">删除</button>
+            </div>
+            ${
+              selected
+                ? `<div class="crop-popover">
+                    ${
+                      state.balanceGuide?.type === "replace" && state.balanceGuide.section === section
+                        ? `<div class="guide-bubble" style="grid-column:1/-1">已为你选中建议容器：${framePublicName(state.balanceGuide.frame)}。如果画面不好看，也可以手动切换。</div>`
+                        : ""
+                    }
+                    <button class="tool" data-block-zoom="-0.08">缩小</button>
+                    <input class="range" type="range" min="1" max="3" step="0.005" value="${block.scale || 1}" data-block-scale>
+                    <button class="tool" data-block-zoom="0.08">放大</button>
+                    <button class="tool" data-block-reset>居中</button>
+                    <div class="frame-choices">
+                      <button class="frame-choice ${(!block.frameMode || block.frameMode === "auto") ? "active" : ""}" data-frame-mode="auto">自动</button>
+                      <button class="frame-choice ${block.frameMode === "landscape" ? "active" : ""}" data-frame-mode="landscape">横图</button>
+                      <button class="frame-choice ${block.frameMode === "square" ? "active" : ""}" data-frame-mode="square">方图</button>
+                      <button class="frame-choice ${block.frameMode === "portrait" ? "active" : ""}" data-frame-mode="portrait">竖图</button>
+                    </div>
+                  </div>`
+                : ""
+            }
+          </div>`;
+      }
+
+      function previewBlockHeight(block) {
+        return Math.round(frameHeight(blockFrameRatio(block), EDITOR_FRAME_WIDTH));
+      }
+
+      function imageFit(photo, boxW, boxH, block) {
+        if (!photo) return { w: boxW, h: boxH, x: 0, y: 0 };
+        const fit = clampedBlockOffset(photo, boxW, boxH, block);
+        return {
+          w: fit.drawW,
+          h: fit.drawH,
+          x: `calc(-50% + ${fit.x}px)`,
+          y: `calc(-50% + ${fit.y}px)`,
+        };
+      }
+
+      function renderPool() {
+        const counts = usageCounts();
+        const unused = state.photos.filter((photo) => !counts.get(photo.id));
+        const used = state.photos.filter((photo) => counts.get(photo.id));
+        const list = state.libraryTab === "used" ? used : unused;
+        const guide = state.balanceGuide?.type === "add" ? state.balanceGuide : null;
+        els.poolTabs.innerHTML = `
+          <button class="tab-btn ${state.libraryTab === "unused" ? "active" : ""}" data-library-tab="unused">未使用 ${unused.length}</button>
+          <button class="tab-btn ${state.libraryTab === "used" ? "active" : ""}" data-library-tab="used">已使用 ${used.length}</button>
+        `;
+        els.poolRow.innerHTML =
+          (guide
+            ? `<div class="guide-bubble" style="min-width:240px">建议选择适合“${framePublicName(guide.frame)}”的素材，拖入${guide.section === "top" ? "上半区" : "下半区"}后会更容易配平。</div>`
+            : "") +
+          list
+            .map((photo) => {
+              const count = counts.get(photo.id) || 0;
+              const ratio = autoFrameRatio(photo);
+              return `
+                <div class="pool-thumb" draggable="true" data-pool-photo="${photo.id}">
+                  <img src="${photo.src}" alt="${photo.name}">
+                  <div class="pool-meta">
+                    <span>${frameLabel(ratio)}</span>
+                    <span>${count ? `已使用 ${count} 次` : "未使用"}</span>
+                  </div>
+                </div>`;
+            })
+            .join("") + `<label class="add-tile">继续添加<input class="file-input" type="file" accept="image/*" multiple data-more-inline></label>`;
+      }
+
+      function framePublicName(frame) {
+        return { "3:2": "横图", "1:1": "方图", "2:3": "竖图" }[frame] || "自动";
+      }
+
+      function renderDrawer() {
+        if (!state.selected || state.selected.groupIndex !== state.activeCollage) {
+          els.photoDrawer.classList.add("hidden");
+          return;
+        }
+        els.photoDrawer.classList.remove("hidden");
+        els.drawerTitle.textContent = `已选中：${state.selected.section === "top" ? "上半区" : "下半区"} ${state.selected.index + 1}`;
+      }
+
+      function save() {
+        try {
+          localStorage.setItem("center_cover_collage_state", JSON.stringify(state));
+        } catch {
+          console.warn("本地暂存失败，可能是图片太多或浏览器容量不足。");
+        }
+      }
+
+      function restore() {
+        const raw = localStorage.getItem("center_cover_collage_state");
+        if (!raw) return;
+        try {
+          const restored = JSON.parse(raw);
+          Object.assign(state, restored);
+          if (!Number.isFinite(Number(state.previewScale))) state.previewScale = 1;
+          if (!Number.isFinite(Number(state.editorScale))) state.editorScale = 1;
+        } catch {
+          localStorage.removeItem("center_cover_collage_state");
+        }
+      }
+
+      async function enrichMissingMeta() {
+        const missing = state.photos.filter((photo) => !photo.width || !photo.height);
+        if (state.externalCover && (!state.externalCover.width || !state.externalCover.height)) {
+          missing.push(state.externalCover);
+        }
+        for (const photo of missing) {
+          try {
+            const meta = await imageMeta(photo.src);
+            photo.width = meta.width;
+            photo.height = meta.height;
+          } catch {
+            photo.width = 1;
+            photo.height = 1;
+          }
+        }
+        if (missing.length) {
+          save();
+          render();
+        }
+      }
+
+      els.photoInput.addEventListener("change", (event) => addFiles(event.target.files));
+      els.moreInput.addEventListener("change", (event) => addFiles(event.target.files));
+      els.coverInput.addEventListener("change", (event) => addFiles(event.target.files, "cover"));
+      els.uploadZone.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        els.uploadZone.classList.add("drag");
+      });
+      els.uploadZone.addEventListener("dragleave", () => els.uploadZone.classList.remove("drag"));
+      els.uploadZone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        els.uploadZone.classList.remove("drag");
+        addFiles(event.dataTransfer.files);
+      });
+
+      document.addEventListener("click", (event) => {
+        const removeId = event.target.dataset.removePhoto;
+        if (removeId) {
+          state.photos = state.photos.filter((photo) => photo.id !== removeId);
+          if (state.coverId === removeId) state.coverId = null;
+          save();
+          render();
+        }
+        const layout = event.target.closest("[data-layout]")?.dataset.layout;
+        if (layout) {
+          state.outputCount = Number(layout);
+          state.coverSlices = [];
+          save();
+          render();
+        }
+        const cover = event.target.closest("[data-cover]")?.dataset.cover;
+        if (cover) {
+          state.coverId = cover;
+          state.coverSlices = [];
+          state.coverTransform = { scale: 1, x: 0, y: 0 };
+          save();
+          render();
+        }
+        const nav = event.target.dataset.nav;
+        if (nav) setStep(nav);
+        const jump = event.target.closest("[data-step-jump]")?.dataset.stepJump;
+        if (jump) setStep(jump);
+        const collage = event.target.closest("[data-collage]")?.dataset.collage;
+        if (collage !== undefined) {
+          state.activeCollage = Number(collage);
+          state.selected = null;
+          save();
+          renderEditor();
+        }
+        const selected = event.target.dataset.selectPhoto;
+        if (selected) {
+          const [section, index] = selected.split(":");
+          selectPhoto(section, Number(index));
+        }
+        const quickRemove = event.target.dataset.quickRemove;
+        if (quickRemove) {
+          const [section, index] = quickRemove.split(":");
+          state.selected = { groupIndex: state.activeCollage, section, index: Number(index) };
+          removeSelected(true);
+        }
+        const zoom = event.target.dataset.blockZoom;
+        if (zoom !== undefined) {
+          const block = selectedBlock();
+          if (!block) return;
+          block.scale = Math.min(3, Math.max(1, (block.scale || 1) + Number(zoom)));
+          clampBlockCrop(block);
+          save();
+          renderEditor();
+        }
+        if (event.target.dataset.blockReset !== undefined) {
+          updateSelectedBlock({ scale: 1, x: 0, y: 0 });
+        }
+        const frameMode = event.target.dataset.frameMode;
+        if (frameMode) {
+          const block = selectedBlock();
+          const photo = photoById(block?.photoId);
+          updateSelectedBlock({ frameMode, resolvedFrame: frameMode === "auto" ? autoFrameRatio(photo) : undefined, scale: 1, x: 0, y: 0 });
+        }
+        const recommendSection = event.target.dataset.recommendReplace;
+        if (recommendSection) {
+          recommendReplace(recommendSection);
+        }
+        const recommendAddSection = event.target.dataset.recommendAdd;
+        if (recommendAddSection) {
+          recommendAddTo(recommendAddSection);
+        }
+        if (event.target.dataset.openPool !== undefined) {
+          document.getElementById("poolRow")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        if (event.target.dataset.acceptBlank !== undefined) {
+          event.target.closest(".balance-spacer")?.classList.add("hidden");
+        }
+        const libraryTab = event.target.dataset.libraryTab;
+        if (libraryTab) {
+          state.libraryTab = libraryTab;
+          save();
+          renderPool();
+        }
+        const editorZoom = event.target.dataset.editorZoom;
+        if (editorZoom) {
+          state.editorScale = Number(editorZoom);
+          save();
+          renderEditor();
+        }
+        const editorZoomStep = event.target.dataset.editorZoomStep;
+        if (editorZoomStep) {
+          state.editorScale = Math.min(1, Math.max(0.25, (state.editorScale || 1) + Number(editorZoomStep)));
+          save();
+          renderEditor();
+        }
+        const previewZoom = event.target.dataset.previewZoom;
+        if (previewZoom) {
+          state.previewScale = previewZoom;
+          save();
+          updateFullPreview();
+        }
+        const previewZoomStep = event.target.dataset.previewZoomStep;
+        if (previewZoomStep) {
+          state.previewScale = Math.min(2.4, Math.max(1, Number(state.previewScale || 1) + Number(previewZoomStep)));
+          save();
+          updateFullPreview();
+        }
+        const poolPhoto = event.target.closest("[data-pool-photo]")?.dataset.poolPhoto;
+        if (poolPhoto && state.selected) {
+          replaceSelectedWith(poolPhoto);
+          state.balanceGuide = null;
+        }
+      });
+
+      let coverDrag = null;
+      els.coverCropper.addEventListener("pointerdown", (event) => {
+        if (!getCoverImage()) return;
+        coverDrag = {
+          startX: event.clientX,
+          startY: event.clientY,
+          x: state.coverTransform.x,
+          y: state.coverTransform.y,
+        };
+        els.coverCropper.setPointerCapture(event.pointerId);
+      });
+      els.coverCropper.addEventListener("pointermove", (event) => {
+        if (!coverDrag) return;
+        const box = els.coverCropper.getBoundingClientRect();
+        state.coverTransform.x = coverDrag.x + (event.clientX - coverDrag.startX) / box.width;
+        state.coverTransform.y = coverDrag.y + (event.clientY - coverDrag.startY) / box.height;
+        renderCoverCropper();
+      });
+      els.coverCropper.addEventListener("pointerup", async () => {
+        if (!coverDrag) return;
+        coverDrag = null;
+        state.coverSlices = [];
+        await refreshCoverPreview();
+        save();
+      });
+      els.coverCropper.addEventListener("wheel", async (event) => {
+        event.preventDefault();
+        const delta = event.deltaY < 0 ? 0.04 : -0.04;
+        state.coverTransform.scale = Math.min(3, Math.max(1, state.coverTransform.scale + delta));
+        renderCoverCropper();
+        await refreshCoverPreview();
+        save();
+      }, { passive: false });
+      els.coverZoom.addEventListener("input", async () => {
+        state.coverTransform.scale = Number(els.coverZoom.value);
+        renderCoverCropper();
+        await refreshCoverPreview();
+        save();
+      });
+      els.coverZoomOut.onclick = async () => {
+        state.coverTransform.scale = Math.max(1, state.coverTransform.scale - 0.08);
+        renderCover();
+        save();
+      };
+      els.coverZoomIn.onclick = async () => {
+        state.coverTransform.scale = Math.min(3, state.coverTransform.scale + 0.08);
+        renderCover();
+        save();
+      };
+      els.coverCenter.onclick = async () => {
+        state.coverTransform = { scale: 1, x: 0, y: 0 };
+        renderCover();
+        save();
+      };
+
+      document.addEventListener("change", (event) => {
+        if (event.target.dataset.moreInline !== undefined) {
+          addFiles(event.target.files);
+        }
+      });
+
+      document.addEventListener("input", (event) => {
+        if (event.target.dataset.blockScale !== undefined) {
+          updateSelectedBlock({ scale: Number(event.target.value) });
+        }
+        if (event.target.id === "editorZoomSlider") {
+          state.editorScale = Number(event.target.value) / 100;
+          save();
+          renderEditor();
+        }
+        if (event.target.id === "previewZoomSlider") {
+          state.previewScale = Number(event.target.value) / 100;
+          save();
+          updateFullPreview();
+        }
+      });
+
+      document.addEventListener("wheel", (event) => {
+        const target = event.target.closest("[data-crop-target]");
+        if (!target) return;
+        if (!event.altKey && !event.metaKey) return;
+        event.preventDefault();
+        const [section, index] = target.dataset.cropTarget.split(":");
+        state.selected = { groupIndex: state.activeCollage, section, index: Number(index) };
+        const block = selectedBlock();
+        if (!block) return;
+        const delta = event.deltaY < 0 ? 0.04 : -0.04;
+        block.scale = Math.min(3, Math.max(1, (block.scale || 1) + delta));
+        clampBlockCrop(block);
+        save();
+        renderEditor();
+      }, { passive: false });
+
+      document.addEventListener("pointerdown", (event) => {
+        if (state.step !== "editor" || !state.selected) return;
+        const insideEditable = event.target.closest(".photo-block, .drawer, .pool, .strip-card, [data-crop-target]");
+        if (insideEditable) return;
+        state.selected = null;
+        save();
+        renderEditor();
+      });
+
+      let blockDrag = null;
+      document.addEventListener("pointerdown", (event) => {
+        const target = event.target.closest("[data-crop-target]");
+        if (!target) return;
+        event.preventDefault();
+        const [section, index] = target.dataset.cropTarget.split(":");
+        const numericIndex = Number(index);
+        state.selected = { groupIndex: state.activeCollage, section, index: numericIndex };
+        const block = state.collages[state.activeCollage][section][numericIndex];
+        blockDrag = {
+          section,
+          index: numericIndex,
+          startX: event.clientX,
+          startY: event.clientY,
+          x: block.x || 0,
+          y: block.y || 0,
+        };
+        target.setPointerCapture(event.pointerId);
+      });
+      document.addEventListener("pointermove", (event) => {
+        if (!blockDrag) return;
+        event.preventDefault();
+        const block = state.collages[state.activeCollage][blockDrag.section][blockDrag.index];
+        if (!block) return;
+        const scale = state.editorScale || 1;
+        block.x = blockDrag.x + (event.clientX - blockDrag.startX) / scale;
+        block.y = blockDrag.y + (event.clientY - blockDrag.startY) / scale;
+        clampBlockCrop(block);
+        renderEditor();
+      });
+      document.addEventListener("pointerup", () => {
+        if (!blockDrag) return;
+        blockDrag = null;
+        save();
+      });
+
+      document.addEventListener("contextmenu", (event) => {
+        if (event.target.closest("[data-crop-target]")) event.preventDefault();
+      });
+
+      document.addEventListener("dragstart", (event) => {
+        const block = event.target.closest("[data-sort-handle]")?.closest("[data-photo-block]");
+        const pool = event.target.closest("[data-pool-photo]");
+        if (block) {
+          state.selected = null;
+          syncCanvasZoomHostHeight();
+          event.dataTransfer.setData("application/json", JSON.stringify({ type: "block", section: block.dataset.section, index: Number(block.dataset.index) }));
+        }
+        if (pool) {
+          event.dataTransfer.setData("application/json", JSON.stringify({ type: "pool", id: pool.dataset.poolPhoto }));
+        }
+      });
+
+      document.addEventListener("dragover", (event) => {
+        const block = event.target.closest("[data-photo-block]");
+        const section = event.target.closest("[data-drop-section]");
+        if (block || section) event.preventDefault();
+      });
+
+      document.addEventListener("dragend", () => {
+        requestAnimationFrame(syncCanvasZoomHostHeight);
+      });
+
+      document.addEventListener("drop", (event) => {
+        const dataRaw = event.dataTransfer.getData("application/json");
+        if (!dataRaw) return;
+        event.preventDefault();
+        const data = JSON.parse(dataRaw);
+        const targetBlock = event.target.closest("[data-photo-block]");
+        const targetSection = event.target.closest("[data-drop-section]")?.dataset.dropSection;
+        const group = state.collages[state.activeCollage];
+        if (data.type === "block" && targetBlock) {
+          const from = group[data.section];
+          const to = group[targetBlock.dataset.section];
+          const [id] = from.splice(data.index, 1);
+          to.splice(Number(targetBlock.dataset.index), 0, id);
+          state.renderToken += 1;
+        }
+        if (data.type === "pool" && targetSection) {
+          const block = createBlock(data.id);
+          if (state.balanceGuide?.type === "add" && state.balanceGuide.section === targetSection) {
+            block.resolvedFrame = state.balanceGuide.frame;
+            block.frameMode = block.resolvedFrame === "3:2" ? "landscape" : block.resolvedFrame === "2:3" ? "portrait" : "square";
+          }
+          group[targetSection].push(block);
+          state.renderToken += 1;
+        }
+        state.selected = null;
+        state.balanceGuide = null;
+        save();
+        renderEditor();
+      });
+
+      els.goSettingsBtn.onclick = () => setStep("settings");
+      els.goCoverBtn.onclick = () => {
+        if (!state.coverId && state.photos.length) state.coverId = state.photos[0].id;
+        setStep("cover");
+      };
+      els.backStepBtn.onclick = () => {
+        const prev = previousStep();
+        if (prev) setStep(prev);
+      };
+      els.generateBtn.onclick = generateCollages;
+      els.previewBtn.onclick = () => {
+        els.modalFeedPreview.innerHTML = "";
+        els.previewModal.classList.add("show");
+        els.modalFeedPreview.innerHTML = `<div class="hint" style="grid-column:1/-1;padding:20px;text-align:center">正在从最终长图中心裁切预览...</div>`;
+        actualFeedPreviewImages().then((images) => renderFeedPreview(els.modalFeedPreview, images));
+      };
+      els.closePreviewBtn.onclick = () => els.previewModal.classList.remove("show");
+      els.autoFixBtn.onclick = autoFix;
+      els.exportBtn.onclick = exportAll;
+      document.getElementById("movePoolBtn").onclick = () => removeSelected(true);
+      document.getElementById("deleteBtn").onclick = () => removeSelected(false);
+      document.getElementById("replaceBtn").onclick = () => els.replaceInput.click();
+      els.replaceInput.onchange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const src = await fileToDataUrl(file);
+        const photo = { id: uid(), name: file.name, src };
+        state.photos.push(photo);
+        replaceSelectedWith(photo.id);
+        event.target.value = "";
+      };
+      els.clearProjectBtn.onclick = () => {
+        if (!confirm("确认清除本地记录吗？")) return;
+        localStorage.removeItem("center_cover_collage_state");
+        location.reload();
+      };
+
+      restore();
+      render();
+      enrichMissingMeta();
+    </script>
+  </body>
+</html>
